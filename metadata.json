@@ -1,0 +1,6 @@
+{
+  "name": "IoT Predictive Maintenance",
+  "description": "Predictive maintenance dashboard for industrial IoT machine health monitoring, failure risk prediction, telemetry analytics, alerts, and work orders.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

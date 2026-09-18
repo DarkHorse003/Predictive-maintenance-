@@ -1,0 +1,218 @@
+import { useMemo } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  BellRing,
+  CheckCircle2,
+  HelpCircle,
+  ShieldAlert,
+} from "lucide-react";
+import { useMachines } from "../hooks/useMachines";
+import { useAlerts } from "../context/useAlerts";
+import AttentionPanel from "../components/dashboard/AttentionPanel";
+import KpiCard from "../components/dashboard/KpiCard";
+import MachineCard from "../components/dashboard/MachineCard";
+import LiveSensorStream from "../components/dashboard/LiveSensorStream/LiveSensorStream";
+
+export default function Dashboard() {
+  const { machines, loading: machinesLoading } = useMachines();
+  const {
+    openCount,
+    criticalCount,
+    warningCount,
+    loading: alertsLoading,
+  } = useAlerts();
+
+  // DASHBOARD KPI LOGIC (Strictly separated per specification):
+  // Total Machines = number of machines returned by machine API
+  // Healthy = machines whose Machine Health == HEALTHY
+  // Warning = machines whose Machine Health == WARNING
+  // Critical = machines whose Machine Health == CRITICAL
+  // Unknown = machines whose Machine Health == UNKNOWN
+  const healthStats = useMemo(() => {
+    let healthy = 0;
+    let warning = 0;
+    let critical = 0;
+    let unknown = 0;
+
+    machines.forEach((m) => {
+      const h = String(m.machineHealth || "UNKNOWN").toUpperCase();
+      if (h === "HEALTHY") healthy++;
+      else if (h === "WARNING") warning++;
+      else if (h === "CRITICAL") critical++;
+      else unknown++;
+    });
+
+    return {
+      total: machines.length,
+      healthy,
+      warning,
+      critical,
+      unknown,
+    };
+  }, [machines]);
+
+  return (
+    <div className="space-y-7">
+      {/* Header */}
+      <section>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Operations & Predictive Intelligence
+            </p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Predictive Maintenance Dashboard
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate-500">
+              Independent monitoring of operational machine states, ML-predicted machine health, and real-time active threshold alerts.
+            </p>
+          </div>
+
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Live Backend Connected
+          </div>
+        </div>
+      </section>
+
+      {/* PROMINENT LIVE SENSOR STREAM (Time-series telemetry, live sensors, & AI inference) */}
+      <LiveSensorStream machines={machines} />
+
+      {/* KPI SECTION 1: MACHINE HEALTH (Derived from ML Prediction) */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+              1. Machine Health Distribution (ML Prediction)
+            </h2>
+            <p className="text-xs text-slate-400">
+              Calculated strictly from failure probability, RUL, and 24h failure risk.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+          <KpiCard
+            title="Total Machines"
+            value={healthStats.total}
+            description="Active fleet assets"
+            icon={Activity}
+          />
+          <KpiCard
+            title="Healthy"
+            value={healthStats.healthy}
+            description="RUL > 72h & risk < 40%"
+            icon={CheckCircle2}
+            tone="success"
+          />
+          <KpiCard
+            title="Warning"
+            value={healthStats.warning}
+            description="RUL 24-72h or risk 40-75%"
+            icon={AlertTriangle}
+            tone="warning"
+          />
+          <KpiCard
+            title="Critical"
+            value={healthStats.critical}
+            description="RUL ≤ 24h or risk ≥ 75%"
+            icon={ShieldAlert}
+            tone="critical"
+          />
+          <KpiCard
+            title="Unknown Health"
+            value={healthStats.unknown}
+            description="ML prediction unavailable"
+            icon={HelpCircle}
+          />
+        </div>
+      </section>
+
+      {/* KPI SECTION 2: ACTIVE ALERTS (Sensor Thresholds & ML Events) */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+              2. Active Alerts (Threshold & Anomaly Events)
+            </h2>
+            <p className="text-xs text-slate-400">
+              Independent alert events generated by telemetry thresholds or ML rule breaches.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Open Alerts
+              </span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                <BellRing className="h-4 w-4" />
+              </span>
+            </div>
+            <p className="mt-2 text-3xl font-bold text-slate-900">{openCount}</p>
+            <p className="mt-1 text-xs text-slate-500">Total unresolved alert events</p>
+          </div>
+
+          <div className="rounded-2xl border border-red-200 bg-red-50/50 p-5 shadow-sm ring-1 ring-red-100">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-red-700">
+                Critical Alerts
+              </span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-red-100 text-red-600">
+                <ShieldAlert className="h-4 w-4" />
+              </span>
+            </div>
+            <p className="mt-2 text-3xl font-bold text-red-700">{criticalCount}</p>
+            <p className="mt-1 text-xs text-red-600">Immediate hazard breaches</p>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 shadow-sm ring-1 ring-amber-100">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">
+                Warning Alerts
+              </span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+                <AlertTriangle className="h-4 w-4" />
+              </span>
+            </div>
+            <p className="mt-2 text-3xl font-bold text-amber-700">{warningCount}</p>
+            <p className="mt-1 text-xs text-amber-600">Approaching threshold limit</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Attention Required Section */}
+      {machinesLoading || alertsLoading ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+          Loading monitored assets...
+        </div>
+      ) : (
+        <AttentionPanel machines={machines} />
+      )}
+
+      {/* Monitored Assets Grid */}
+      <section>
+        <div className="mb-4 flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Monitored Assets</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Each card displays Operational Status, Machine Health, and Active Alerts independently.
+            </p>
+          </div>
+          <span className="hidden text-xs font-medium text-slate-400 sm:block">
+            {machines.length} machines monitored
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
+          {machines.map((machine) => (
+            <MachineCard key={machine.machineId} machine={machine} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
